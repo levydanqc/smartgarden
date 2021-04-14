@@ -14,8 +14,17 @@ To enter in calibration mode, send via the Serial:
 ## Soil Moisture Sensor
 
 To calibrate the soil moisture sensor:
-1. Put sensor in the air, retreive value and set it to MOISTURE_AIR
-2. Put sensor in water, retreive value and set it to MOISTURE_WATER
+
+1. Put sensor in the air, retrieve value and set it to MOISTURE_AIR
+2. Put sensor in water, retrieve value and set it to MOISTURE_WATER
+
+## LDR Sensor
+
+To calibrate the light dependant resistor (LDR):
+
+1. Put the sensor in a dark room with as little light as possible, retrieve value and set it to LDR_MIN
+2. Put the sensor in a bright sunny day in the direction of the Sun, retrieve value and set it to LDR_MAX
+
 
 ---
 
