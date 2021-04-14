@@ -15,4 +15,5 @@ To enter in calibration mode, send via the Serial:
 
 ## © Copyright
 
+[Adidax: DHT11] (https://github.com/adidax/dht11)
 [DFRobot Gravity: Analog TDS Sensor/Meter](https://github.com/DFRobot/GravityTDS)
