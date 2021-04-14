@@ -7,7 +7,9 @@
 
 /* PINOUT */
 #define dhtPin 5
-#define tdsPin A1
+#define tdsPin A2
+#define moisture1Pin A0
+#define moisture2Pin A1
 /* END PINOUT */
 
 
@@ -26,6 +28,14 @@ float temperature;
 GravityTDS Tds;
 float tds;
 /* END TDS */
+
+/* Moisture sensors */
+#define MOISTURE_WATER 250
+#define MOISTURE_AIR 487
+
+float moisture1;
+float moisture2;
+/* END Moisture */
 
 void setup()
 {
@@ -64,8 +74,8 @@ float getTds(float temperature)
 */
 float getHumidity()
 {
-    Dht.read(dhtPin);
-    return (float)Dht.humidity;
+    Dht.read(dhtPin); // Retreive value
+    return (float)Dht.humidity; // Return humidity
 }
 
 /**
@@ -75,6 +85,42 @@ float getHumidity()
 */
 float getTemperature()
 {
-    Dht.read(dhtPin);
-    return (float)Dht.temperature;
+    Dht.read(dhtPin); // Retreive value
+    return (float)Dht.temperature; // Return temperature
+}
+
+/**
+ * Get soil moisture from sensor 1 in percent.
+ * 
+ * @return Soil moisture from sensor 1 in %.
+*/
+float getMoisture1()
+{
+    for (int i = 0; i <= 100; i++) // Retrieving a hundred value for accuracy
+    {
+        moisture1 += analogRead(moisture1Pin); 
+        delay(1); 
+    }
+    moisture1 = moisture1 / 100.0 // Get average value
+    // Map value between 0 and 100 to get a percentage
+    moisture1 = map(moisture1, MOISTURE_AIR, MOISTURE_WATER, 0, 100);
+    return constrain(moisture1, 0, 100); // Constrain value inside [0, 100]
+}
+
+/**
+ * Get soil moisture from sensor 2 in percent.
+ * 
+ * @return Soil moisture from sensor 2 in %.
+*/
+float getMoisture2()
+{
+    for (int i = 0; i <= 100; i++) // Retrieving a hundred value for accuracy
+    {
+        moisture2 += analogRead(moisture2Pin); 
+        delay(1); 
+    }
+    moisture2 = moisture2 / 100.0 // Get average value
+    // Map value between 0 and 100 to get a percentage
+    moisture2 = map(moisture2, MOISTURE_AIR, MOISTURE_WATER, 0, 100);
+    return constrain(moisture2, 0, 100); // Constrain value inside [0, 100]
 }

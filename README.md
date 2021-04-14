@@ -11,6 +11,12 @@ To enter in calibration mode, send via the Serial:
 >   - _e.g._: cal:504
 > - exit -> save the calibration into the sensor and exit calibration mode
 
+## Soil Moisture Sensor
+
+To calibrate the soil moisture sensor:
+1. Put sensor in the air, retreive value and set it to MOISTURE_AIR
+2. Put sensor in water, retreive value and set it to MOISTURE_WATER
+
 ---
 
 ## © Copyright
