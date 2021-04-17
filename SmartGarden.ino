@@ -6,7 +6,7 @@
 ****************************************************/
 
 /* PINOUT */
-#define dhtPin D5
+#define dhtPin D3 
 #define tdsPin A0
 #define moisture1Pin A0
 #define moisture2Pin A0
@@ -58,15 +58,15 @@ float tds;
 /* END TDS */
 
 /* Moisture sensors */
-#define MOISTURE_WATER 250
-#define MOISTURE_AIR 487
+#define MOISTURE_WATER 487
+#define MOISTURE_AIR 250
 float moisture1;
 float moisture2;
 /* END Moisture */
 
 /* LDR */
-#define LDR_MAX 0
 #define LDR_MIN 0
+#define LDR_MAX 1000
 float ldr1;
 float ldr2;
 /* END LDR */
@@ -101,6 +101,12 @@ void loop()
     timer.run();
 }
 
+/**
+    Point d'entrée de Blynk.
+
+    @def Écrit chaque donnée sur les pins virtuelles
+    de blynk.
+*/
 void getData()
 {
     for (int i = 0; i < nbAnalogique; i++)
@@ -169,7 +175,7 @@ float getTds(float temperature)
 */
 float getMoisture1()
 {
-    for (int i = 0; i <= 100; i++) // Retrieving a hundred value for accuracy
+    for (int i = 0; i < 100; i++) // Retrieving a hundred value for accuracy
     {
         moisture1 += analogRead(moisture1Pin);
         delay(1);
@@ -187,7 +193,7 @@ float getMoisture1()
 */
 float getMoisture2()
 {
-    for (int i = 0; i <= 100; i++) // Retrieving a hundred value for accuracy
+    for (int i = 0; i < 100; i++) // Retrieving a hundred value for accuracy
     {
         moisture2 += analogRead(moisture2Pin);
         delay(1);
@@ -205,7 +211,7 @@ float getMoisture2()
 */
 float getLDR1()
 {
-    for (int i = 0; i <= 100; i++)
+    for (int i = 0; i < 100; i++)
     {
         ldr1 += analogRead(ldr1Pin);
         delay(1);
@@ -222,7 +228,7 @@ float getLDR1()
 */
 float getLDR2()
 {
-    for (int i = 0; i <= 100; i++)
+    for (int i = 0; i < 100; i++)
     {
         ldr2 += analogRead(ldr2Pin);
         delay(1);

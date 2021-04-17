@@ -18,13 +18,6 @@ To calibrate the soil moisture sensor:
 1. Put sensor in the air, retrieve value and set it to MOISTURE_AIR
 2. Put sensor in water, retrieve value and set it to MOISTURE_WATER
 
-## LDR Sensor
-
-To calibrate the light dependant resistor (LDR):
-
-1. Put the sensor in a dark room with as little light as possible, retrieve value and set it to LDR_MIN
-2. Put the sensor in a bright sunny day in the direction of the Sun, retrieve value and set it to LDR_MAX
-
 ## DC-DC Step-down Converter
 
 Because the solenoide water valve need 12V, we will use a power supply of 12V.
