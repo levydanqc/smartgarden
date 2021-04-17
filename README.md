@@ -2,6 +2,47 @@
 
 Smart garden monitoring for growing vegetables and fruits with an Arduino and Blynk platform.
 
+## Connections
+
+Because there's actually a lot of sensors (and I'm not that good with layout..), below is all the connections for the project.
+
+| Board   | Vin | Gnd |     A0     |   D0   |   D1   |   D2   |     D3     |    D8    |
+| ------- | :-: | :-: | :--------: | :----: | :----: | :----: | :--------: | :------: |
+| NodeMcu | 12V | Gnd | MUX:COM(Z) | MUX:S0 | MUX:S1 | MUX:S2 | DHT11:Data | NPN:Base |
+
+| Components  | Vcc | Gnd | COM (Z) | S0  | S1  | S2  | CH0 | CH1 | CH2  | CH3  | CH4 |
+| ----------- | :-: | :-: | :-----: | :-: | :-: | :-: | :-: | :-: | :--: | :--: | :-: |
+| Multiplexer | 12V | Gnd |   A0    | D0  | D1  | D2  | SM1 | SM2 | LDR1 | LDR2 | TDS |
+
+| Components     |   Base   | Emmiter | Collector |
+| -------------- | :------: | :-----: | :-------: |
+| NPN transistor | D8 (1kΩ) |   Gnd   | Valve[-]  |
+
+| Components      | Positive | Negative | Data | Infos |
+| --------------- | :------: | :------: | :--: | :---: |
+| Power supply    |   Vin    |   Gnd    |      |       |
+|                 |  Valve   |   Gnd    | Data |       |
+|                 | SD:In[+] |   Gnd    | Data |       |
+| Valve           |   12V    |   Gnd    |      |       |
+| Diode           | Valve[+] | Valve[-] |      |       |
+| DHT11           |    5V    |   Gnd    |  D3  | PU-10 |
+| Soil Moisture 1 |    5V    |   Gnd    | CH0  |       |
+| Soil Moisture 2 |    5V    |   Gnd    | CH1  |       |
+| Photocell 1     |    5V    |   Gnd    | CH2  | PD-1  |
+| Photocell 2     |    5V    |   Gnd    | CH3  | PD-1  |
+| TDS Sensor      |    5V    |   Gnd    | CH4  |       |
+
+> SM: Soil Moisture Sensor
+> LDR: Light Dependant Resistor (Photocell)
+> MUX: Multiplexer
+> SD: Step-Down Converter
+> PU-Value: Pull-Up Resistors of _Value_ kΩ
+> PD-Value: Pull-Down Resistors of _Value_ kΩ
+
+_12V refers to the power supply | 5V to the output of the Step-Down._
+_Ground connections are not important as long as they are wired together._
+**Please make sure to double check your wiring before connecting the power supply as a wrong connection could fry your components. Also make sure to check all pull-down or pull-up resistors on the schema.**
+
 ## TDS Sensor
 
 To enter in calibration mode, send via the Serial:
@@ -18,17 +59,42 @@ To calibrate the soil moisture sensor:
 1. Put sensor in the air, retrieve value and set it to MOISTURE_AIR
 2. Put sensor in water, retrieve value and set it to MOISTURE_WATER
 
-## DC-DC Step-down Converter
+## Solenoide Water Valve
+
+The water valve need a 12V power supply and about 600 mA, but each items is different
+so check your datasheet to be sure. Also, there is no polarity so you can connect either pin
+to ground and positive.
+
+## DC-DC Step-Down Converter
 
 Because the solenoide water valve need 12V, we will use a power supply of 12V.
-The arduino nano can be power with the same power supply via the Vin pin that can take
-from 6V to 12V because of the on-board 5V regulator. Unfortunately, the ESP8266 cannot be powered by the same
-power supply as it need 3.3V. The step-down converter is used to convert 12V to 3.3V and can power up to 3A.
+The NodeMcu can be power with the same power supply via the Vin pin that can take
+from 6V to 12V because of the on-board 3.3V regulator.
+However, because of the analog reading of all the sensors, powering them with the 3.3V
+pins of the NodeMcu would limit the range of values to 675 possibilities instead of the
+1024 normally. That's why a DC-DC Step-Down converter is used, to output 5V from the 12V
+power supply for all the sensors.
 
-> Note: The ESP8266 cannot be powered by the 3.3V pin of the arduino (as well as the 5V pin) because
-> it need betweem 400mA to 600mA compared to the 20mA-40mA that output the arduino.
-> That is why a external power supply (in this project an AC to DC 12V 600mA was used) is being used to power
-> the arduino and the valve independently.
+## Multiplexer CD74HC4051
+
+The NodeMcu only has one analog input, but there's 5 analog sensors to connect. That's when the multiplexer enter!
+A multiplexer gives the possibility to connect multiples analog input to only one output. It does so by controlling which
+sensor is poweredm (one at a time), reading its value and sending it before continuing to the next one.
+This one has 8 channel, this means we can connect up to 8 analog inputs through the 8 pins _Y_ or _CH_ and output the value
+through the _COM_ or _Z_ pin. We can tell it what channel to read from by controlling the state of the 3 _S_ pins, by pulling them
+up in a specific way, it powered the matching channel.
+Below is a table for each combination (it is basically a binary table with 3 bits):
+
+| S0  | S1  | S2  | Channel |
+| --- | :-: | :-: | :-----: |
+| 0   |  0  |  0  |    0    |
+| 1   |  0  |  0  |    1    |
+| 0   |  1  |  0  |    2    |
+| 1   |  1  |  0  |    3    |
+| 0   |  0  |  1  |    4    |
+| 1   |  0  |  1  |    5    |
+| 0   |  1  |  1  |    6    |
+| 1   |  1  |  1  |    7    |
 
 ---
 
