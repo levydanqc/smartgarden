@@ -21,8 +21,8 @@ Because there's actually a lot of sensors (and I'm not that good with layout..),
 | Components      | Positive | Negative | Data | Infos |
 | --------------- | :------: | :------: | :--: | :---: |
 | Power supply    |   Vin    |   Gnd    |      |       |
-|                 |  Valve   |   Gnd    | Data |       |
-|                 | SD:In[+] |   Gnd    | Data |       |
+|                 |  Valve   |   Gnd    |      |       |
+|                 | SD:In[+] |   Gnd    |      |       |
 | Valve           |   12V    |   Gnd    |      |       |
 | Diode           | Valve[+] | Valve[-] |      |       |
 | DHT11           |    5V    |   Gnd    |  D3  | PU-10 |
@@ -32,14 +32,22 @@ Because there's actually a lot of sensors (and I'm not that good with layout..),
 | Photocell 2     |    5V    |   Gnd    | CH3  | PD-1  |
 | TDS Sensor      |    5V    |   Gnd    | CH4  |       |
 
-> SM: Soil Moisture Sensor
-> LDR: Light Dependant Resistor (Photocell)
-> MUX: Multiplexer
-> SD: Step-Down Converter
-> PU-Value: Pull-Up Resistors of _Value_ kΩ
-> PD-Value: Pull-Down Resistors of _Value_ kΩ
+<dl>
+  <dt>SM</dt>
+  <dd>Soil Moisture Sensor.</dd>
+  <dt>LDR</dt>
+  <dd>Light Dependant Resistor (Photocell).</dd>
+  <dt>MUX</dt>
+  <dd>Multiplexer.</dd>
+  <dt>SD</dt>
+  <dd>Step-Down Converter.</dd>
+  <dt>PU-Value</dt>
+  <dd>Pull-Up Resistors of _Value_ kΩ.</dd>
+  <dt>PD-Value</dt>
+  <dd>Pull-Down Resistors of _Value_ kΩ.</dd>
+</dl>
 
-_12V refers to the power supply | 5V to the output of the Step-Down._
+_12V refers to the power supply._ | _5V to the output of the Step-Down._
 _Ground connections are not important as long as they are wired together._
 **Please make sure to double check your wiring before connecting the power supply as a wrong connection could fry your components. Also make sure to check all pull-down or pull-up resistors on the schema.**
 
@@ -96,10 +104,33 @@ Below is a table for each combination (it is basically a binary table with 3 bit
 | 0   |  1  |  1  |    6    |
 | 1   |  1  |  1  |    7    |
 
+# Important
+
+To actually work on a NodeMcu, we have to change a value inside the GravityTDS library file. By opening the file: _GravityTDS.cpp_
+and changes the value of line 39: `this->pin = A1;` to `this->pin = A0;` because of the one and only analog pin of the NodeMcu.
+This file is inside the folder GravityTDS.
+
+## [Installation of Blynk Local Server][4]
+
+For my project I use the Blynk Local Server. The installation can be found [on their GitHub][4] and it is pretty straight-forward.
+The advantages of using your own local server is that you have a full control on what's happening, on the data that is being retrieved (could be
+useful if like GPS was enabled on the app) so that your data isn't stored inside blynk server. Also, it is actually faster to use a local server
+because of the distance the signal has to travel and more importantly, you can have as much Blynk Energy you want (so that you can customize your app by
+adding an infinite number of widgets).
+
 ---
 
 ## © Copyright
 
-[Adidax: DHT11] (https://github.com/adidax/dht11)
-[DFRobot Gravity: Analog TDS Sensor/Meter](https://github.com/DFRobot/GravityTDS)
-[Blynkkk: Blynk-library] (https://github.com/blynkkk/blynk-library)
+<dl>
+  <dt>Adidax: DHT11</dt>
+  <dd>[Github][1]</dd>
+  <dt>DFRobot Gravity: Analog TDS Sensor/Meter</dt>
+  <dd>[Github][2]</dd>
+  <dt>Blynkkk: Blynk-library</dt>
+  <dd>[Github][3]</dd>
+</dl>
+[1]: https://github.com/adidax/dht11
+[2]: https://github.com/DFRobot/GravityTDS
+[3]: https://github.com/blynkkk/blynk-library
+[4]: https://github.com/blynkkk/blynk-server
