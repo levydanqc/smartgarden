@@ -48,7 +48,7 @@ Because there's actually a lot of sensors (and I'm not that good with layout..),
 </dl>
 
 _12V refers to the power supply._ | _5V to the output of the Step-Down._
-_Ground connections are not important as long as they are wired together._
+_Ground connections are not important as long as they are wired together._ <br>
 **Please make sure to double check your wiring before connecting the power supply as a wrong connection could fry your components. Also make sure to check all pull-down or pull-up resistors on the schema.**
 
 ## TDS Sensor
@@ -110,9 +110,9 @@ To actually work on a NodeMcu, we have to change a value inside the GravityTDS l
 and changes the value of line 39: `this->pin = A1;` to `this->pin = A0;` because of the one and only analog pin of the NodeMcu.
 This file is inside the folder GravityTDS.
 
-## [Installation of Blynk Local Server][4]
+## [Installation of Blynk Local Server](https://github.com/blynkkk/blynk-server)
 
-For my project I use the Blynk Local Server. The installation can be found [on their GitHub][4] and it is pretty straight-forward.
+For my project I use the Blynk Local Server. The installation can be found [on their GitHub](https://github.com/blynkkk/blynk-server) and it is pretty straight-forward.
 The advantages of using your own local server is that you have a full control on what's happening, on the data that is being retrieved (could be
 useful if like GPS was enabled on the app) so that your data isn't stored inside blynk server. Also, it is actually faster to use a local server
 because of the distance the signal has to travel and more importantly, you can have as much Blynk Energy you want (so that you can customize your app by
@@ -124,13 +124,9 @@ adding an infinite number of widgets).
 
 <dl>
   <dt>Adidax: DHT11</dt>
-  <dd>[Github][1]</dd>
+  <dd><a href="https://github.com/adidax/dht11">Github</a></dd>
   <dt>DFRobot Gravity: Analog TDS Sensor/Meter</dt>
-  <dd>[Github][2]</dd>
+  <dd><a href="https://github.com/DFRobot/GravityTDS">Github</a></dd>
   <dt>Blynkkk: Blynk-library</dt>
-  <dd>[Github][3]</dd>
+  <dd><a href="https://github.com/blynkkk/blynk-library">Github</a></dd>
 </dl>
-[1]: https://github.com/adidax/dht11
-[2]: https://github.com/DFRobot/GravityTDS
-[3]: https://github.com/blynkkk/blynk-library
-[4]: https://github.com/blynkkk/blynk-server
