@@ -6,12 +6,8 @@
 ****************************************************/
 
 /* PINOUT */
-#define dhtPin D3 
-#define tdsPin A0
-#define moisture1Pin A0
-#define moisture2Pin A0
-#define ldr1Pin A0
-#define ldr2Pin A0
+#define dhtPin D3
+#define analogPin A0
 #define muxOutput = A0;
 const int muxControls[3] = {D0, D1, D2};
 /* END PINOUT */
@@ -51,10 +47,7 @@ float temperature;
 /* END DHT11 */
 
 /* TDS sensor */
-#include "GravityTDS.h"
-#include <EEPROM.h>
-GravityTDS Tds;
-float tds;
+#define tdsCoef 1
 /* END TDS */
 
 /* Moisture sensors */
@@ -74,13 +67,6 @@ float ldr2;
 void setup()
 {
     Serial.begin(9600);
-
-    /* TDS sensor */
-    Tds.setPin(tdsPin);    // Pin of sensor
-    Tds.setAref(5.0);      // Reference voltage on ADC
-    Tds.setAdcRange(1024); // 10 bit ADC for Uno and Nano
-    Tds.begin();
-    /* END TDS sensor */
 
     /* Blynk Setup */
     Blynk.begin(auth, ssid, pass, "192.168.1.100", 8080);
@@ -129,7 +115,7 @@ void getData()
     {
         digitalWrite(muxControls[j], muxChannels[nbAnalogique][j]);
     }
-    tds = getTds(temperature);
+    float tds = getTds(temperature);
     Blynk.virtualWrite(V6, tds);
 }
 
@@ -158,14 +144,25 @@ float getHum()
 /**
     Get value from TDS sensor in ppm.
 
-    @param temperature Temperature at which measure was taken.
+    @param temp Temperature at which measure was taken for compensation.
     @return Tds value of sensor in ppm.
 */
-float getTds(float temperature)
+float getTds(float temp)
 {
-    Tds.setTemperature(temperature); // Set temperature for compensation
-    Tds.update();                    // Retrieve value from sensor
-    return Tds.getTdsValue();        // Return TDS value
+    float value;
+    for (int i = 0; i < 100; i++) // Retrieving a hundred value for accuracy
+    {
+        value += analogRead(analogPin);
+        delay(1);
+    }
+
+    float rawEc = value * 5 / 1024.0;            // Convert value to current
+    float tempCoef = 1.0 + 0.02 * (temp - 25.0); // Find temperature compensation value
+
+    float ec = (rawEc / tempCoef) * tdsCoef;                                  // Add temperature compensation and calibration coef
+    float tds = (133.42 * pow(ec, 3) - 255.86 * ec * ec + 857.39 * ec) * 0.5; // Convert voltage to tds
+
+    return tds;
 }
 
 /**
@@ -177,7 +174,7 @@ float getMoisture1()
 {
     for (int i = 0; i < 100; i++) // Retrieving a hundred value for accuracy
     {
-        moisture1 += analogRead(moisture1Pin);
+        moisture1 += analogRead(analogPin);
         delay(1);
     }
     moisture1 = moisture1 / 100.0; // Get average value
@@ -195,7 +192,7 @@ float getMoisture2()
 {
     for (int i = 0; i < 100; i++) // Retrieving a hundred value for accuracy
     {
-        moisture2 += analogRead(moisture2Pin);
+        moisture2 += analogRead(analogPin);
         delay(1);
     }
     moisture2 = moisture2 / 100.0; // Get average value
@@ -213,7 +210,7 @@ float getLDR1()
 {
     for (int i = 0; i < 100; i++)
     {
-        ldr1 += analogRead(ldr1Pin);
+        ldr1 += analogRead(analogPin);
         delay(1);
     }
     ldr1 = ldr1 / 100.0;
@@ -230,7 +227,7 @@ float getLDR2()
 {
     for (int i = 0; i < 100; i++)
     {
-        ldr2 += analogRead(ldr2Pin);
+        ldr2 += analogRead(analogPin);
         delay(1);
     }
     ldr2 = ldr2 / 100.0;
