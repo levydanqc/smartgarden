@@ -51,6 +51,20 @@ _12V refers to the power supply._ | _5V to the output of the Step-Down._
 _Ground connections are not important as long as they are wired together._ <br>
 **Please make sure to double check your wiring before connecting the power supply as a wrong connection could fry your components. Also make sure to check all pull-down or pull-up resistors on the schema.**
 
+## Configuration
+
+To configure the project, all you need to do is enter your own informations from line 17 to 20. You will need the name and password of your WIFI and a hostname for the board as well as a password that you can create (It is optional, but for security purposes I more comfortable using one).
+The hostname will appear in the PORT setting of the Arduino IDE when you want to upload code and the password will be asked after compiling, just before uploading.
+
+## Over-the-Air (OTA) Upload
+
+The NodeMcu will be placed inside a waterproof and weather-resistant box near the plants and a power outlet so it won't be
+easily accessible. A library called ArduinoOTA (Over-the-Air) let us upload new code to the board without being physically
+connected to it, we only need to be in the same network for that to work.
+The first upload need, obviously, to be wired to the board, but after that we can select the NodeMcu in the PORT configuration of the Arduino IDE to be connected to it.
+
+**It is important to upload the OTA code and librairies each time to be sure it will still be accessible.**
+
 ## TDS Sensor
 
 To enter in calibration mode, send via the Serial:
@@ -59,6 +73,13 @@ To enter in calibration mode, send via the Serial:
 > - cal:value -> send known TDS value of solution (@25°C)
 >   - _e.g._: cal:504
 > - exit -> save the calibration into the sensor and exit calibration mode
+
+_I could have used the GravityTDS Library to retrieve data from the sensor in the main code but I found myself having some trouble with that when used with the NodeMcu and a Multiplexer, I still don't know where the trouble came from. Anyway, I searched for the actual logic behind getting the TDS value from the analog sensor and used it._
+
+### Important
+
+To actually work on a NodeMcu, we have to change a value inside the GravityTDS library file so that we can calibrate the sensor. By opening the file: _GravityTDS.cpp_ and changes the value of line 39: `this->pin = A1;` to `this->pin = A0;` because of the one and only analog pin of the NodeMcu.
+This file is inside the folder GravityTDS.
 
 ## Soil Moisture Sensor
 
@@ -103,12 +124,6 @@ Below is a table for each combination (it is basically a binary table with 3 bit
 | 1   |  0  |  1  |    5    |
 | 0   |  1  |  1  |    6    |
 | 1   |  1  |  1  |    7    |
-
-# Important
-
-To actually work on a NodeMcu, we have to change a value inside the GravityTDS library file. By opening the file: _GravityTDS.cpp_
-and changes the value of line 39: `this->pin = A1;` to `this->pin = A0;` because of the one and only analog pin of the NodeMcu.
-This file is inside the folder GravityTDS.
 
 ## [Installation of Blynk Local Server](https://github.com/blynkkk/blynk-server)
 

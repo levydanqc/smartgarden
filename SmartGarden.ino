@@ -1,9 +1,33 @@
 /***************************************************
 
+ ****************** Configuration ******************
+Enter at line 17 to 20:
+SSID "" : Name of your network
+PASSW "" : Password of your network
+ArduinoOTAHostname "" : Hostname for the OTA PORT setting
+ArduinoOTAPASSW "" : Password for the OTA upload
 
- ***************************************************
+ ****************************************************
   © Copyright : see README.md
 ****************************************************/
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include "dht11.h"
+// For OTA upload
+#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+
+/* OTA Setup */
+#ifndef SSID
+#define SSID "" // Enter the name of your network as it is in you WIFI settings
+#define PASSW "" // Enter the password of your network
+#define ArduinoOTAHostname "" // Enter the hostname for the board (Optional)
+#define ArduinoOTAPASSW "" // Enter the password for the board (Optional)
+#endif
+const char *OtaSSID = SSID;
+const char *OtaPassw = PASSW;
+/* END OTA */
 
 /* PINOUT */
 #define dhtPin D3
@@ -30,17 +54,14 @@ float data[4];
 /* END Multiplexer */
 
 /* Blynk Setup*/
-#include <ESP8266WiFi.h>
-#include <BlynkSimpleEsp8266.h>
 char auth[] = "";
-char ssid[] = "";
-char pass[] = "";
+char ssid[] = SSID;
+char pass[] = PASSW;
 BlynkTimer timer;
 const int virtualPin[nbAnalogique] = {V0, V1, V2, V3};
 /* END Blynk */
 
 /* DHT11 sensor */
-#include "dht11.h"
 dht11 Dht;
 float humidity;
 float temperature;
@@ -67,6 +88,18 @@ float ldr2;
 void setup()
 {
     Serial.begin(9600);
+    /* OTA Setup */
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(OtaSSID, OtaPassw);
+    while (WiFi.waitForConnectResult() != WL_CONNECTED)
+    {
+        Serial.println("Connection Failed! Rebooting...");
+        delay(5000);
+        ESP.restart();
+    }
+    ArduinoOTA.setHostname(ArduinoOTAHostname);
+    ArduinoOTA.setPassword(ArduinoOTAPASSW);
+    /* END OTA */
 
     /* Blynk Setup */
     Blynk.begin(auth, ssid, pass, "192.168.1.100", 8080);
@@ -79,10 +112,61 @@ void setup()
         pinMode(muxControls[i], OUTPUT);
     }
     /* END Mux */
+
+    /* OTA Setup */
+    ArduinoOTA.onStart([]() {
+        String type;
+        if (ArduinoOTA.getCommand() == U_FLASH)
+        {
+            type = "sketch";
+        }
+        else
+        { // U_FS
+            type = "filesystem";
+        }
+
+        // NOTE: if updating FS this would be the place to unmount FS using FS.end()
+        Serial.println("Start updating " + type);
+    });
+    ArduinoOTA.onEnd([]() {
+        Serial.println("\nEnd");
+    });
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+        Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    });
+    ArduinoOTA.onError([](ota_error_t error) {
+        Serial.printf("Error[%u]: ", error);
+        if (error == OTA_AUTH_ERROR)
+        {
+            Serial.println("Auth Failed");
+        }
+        else if (error == OTA_BEGIN_ERROR)
+        {
+            Serial.println("Begin Failed");
+        }
+        else if (error == OTA_CONNECT_ERROR)
+        {
+            Serial.println("Connect Failed");
+        }
+        else if (error == OTA_RECEIVE_ERROR)
+        {
+            Serial.println("Receive Failed");
+        }
+        else if (error == OTA_END_ERROR)
+        {
+            Serial.println("End Failed");
+        }
+    });
+    ArduinoOTA.begin();
+    Serial.println("Ready");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+    /* END OTA */
 }
 
 void loop()
 {
+    ArduinoOTA.handle();
     Blynk.run();
     timer.run();
 }
