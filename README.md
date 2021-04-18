@@ -123,10 +123,10 @@ adding an infinite number of widgets).
 ## © Copyright
 
 <dl>
-  <dt>Adidax: DHT11</dt>
+  <dt>Adidax: DHT11 Library</dt>
   <dd><a href="https://github.com/adidax/dht11">Github</a></dd>
-  <dt>DFRobot Gravity: Analog TDS Sensor/Meter</dt>
-  <dd><a href="https://github.com/DFRobot/GravityTDS">Github</a></dd>
   <dt>Blynkkk: Blynk-library</dt>
   <dd><a href="https://github.com/blynkkk/blynk-library">Github</a></dd>
+  <dt>How2Electronics: TDS Meter</dt>
+  <dd><a href="https://how2electronics.com/iot-based-tds-meter-using-esp8266-for-water-quality-monitoring/">Github</a></dd>
 </dl>
