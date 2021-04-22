@@ -17,28 +17,37 @@ ArduinoOTAPASSW "" : Password for the OTA upload
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#include <TimeLib.h>
+#include <WidgetRTC.h>
 
 /* OTA Setup */
 #ifndef SSID
-#define SSID "" // Enter the name of your network as it is in you WIFI settings
-#define PASSW "" // Enter the password of your network
-#define ArduinoOTAHostname "" // Enter the hostname for the board (Optional)
-#define ArduinoOTAPASSW "" // Enter the password for the board (Optional)
+#define SSID "YOUR_WIFI_SSID"                      // Enter the name of your network as it is in you WIFI settings
+#define PASSW "YOUR_WIFI_PASSWORD"                 // Enter the password of your network
+#define ArduinoOTAHostname "NAME_FOR_THE_ARDUINO"  // Enter the hostname for the board (Optional)
+#define ArduinoOTAPASSW "PASSWORD_FOR_THE_ARDUINO" // Enter the password for the board (Optional)
 #endif
 const char *OtaSSID = SSID;
 const char *OtaPassw = PASSW;
 /* END OTA */
 
-/* PINOUT */
-#define dhtPin D3
+/* Pinout */
+#define dhtPin D1
+#define valvePin D2
 #define analogPin A0
-#define muxOutput = A0;
-const int muxControls[3] = {D0, D1, D2};
-/* END PINOUT */
+#define muxOutput A0;
+const byte muxControls[3] = {D5, D6, D7};
+/* END Pinout */
+
+/* Virtual pinout */
+byte vTemp = V5;
+byte vHum = V4;
+byte vFlow = V6;
+/* END Virtual pinout */
 
 /* Multiplexer */
 #define nbAnalogique 4
-const int muxChannels[5][3] = {
+const byte muxChannels[5][3] = {
     {0, 0, 0}, // Channel 0
     {1, 0, 0}, // Channel 1
     {0, 1, 0}, // Channel 2
@@ -58,8 +67,18 @@ char auth[] = "";
 char ssid[] = SSID;
 char pass[] = PASSW;
 BlynkTimer timer;
-const int virtualPin[nbAnalogique] = {V0, V1, V2, V3};
+const byte virtualPin[nbAnalogique] = {V0, V1, V2, V3};
+WidgetTerminal terminal(V10);
+WidgetRTC rtc;
+byte sliderValue;
+float inputValue;
 /* END Blynk */
+
+/* Valve */
+unsigned long startUnix;
+float duration;
+bool valveIsActivated;
+/* END Valve */
 
 /* DHT11 sensor */
 dht11 Dht;
@@ -104,6 +123,7 @@ void setup()
     /* Blynk Setup */
     Blynk.begin(auth, ssid, pass, "192.168.1.100", 8080);
     timer.setInterval(1000L, getData);
+    terminal.println("Connecté!");
     /* END Blynk */
 
     /* Mux setup */
@@ -158,10 +178,11 @@ void setup()
         }
     });
     ArduinoOTA.begin();
-    Serial.println("Ready");
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
+    terminal.print("IP address: ");
+    terminal.println(WiFi.localIP());
     /* END OTA */
+
+    terminal.flush();
 }
 
 void loop()
@@ -192,15 +213,22 @@ void getData()
 
     humidity = getHum();
     temperature = getTemp();
-    Blynk.virtualWrite(V4, humidity);
-    Blynk.virtualWrite(V5, temperature);
+    Blynk.virtualWrite(vHum, humidity);
+    Blynk.virtualWrite(vTemp, temperature);
 
-    for (int j = 0; j < 3; j++)
+    // for (int j = 0; j < 3; j++)
+    // {
+    //     digitalWrite(muxControls[j], muxChannels[nbAnalogique][j]);
+    // }
+    // float tds = getTds(temperature);
+    // Blynk.virtualWrite(V6, tds);
+
+    // Calculate Valve opening duration
+    if (valveIsActivated && now() >= (startUnix + duration))
     {
-        digitalWrite(muxControls[j], muxChannels[nbAnalogique][j]);
+        valveIsActivated = false;
+        toggleValve();
     }
-    float tds = getTds(temperature);
-    Blynk.virtualWrite(V6, tds);
 }
 
 /**
@@ -317,4 +345,91 @@ float getLDR2()
     ldr2 = ldr2 / 100.0;
     ldr2 = map(ldr2, LDR_MIN, LDR_MAX, 0, 100);
     return constrain(ldr2, 0, 100);
+}
+
+/**
+    Togge between state of valve and print it to terminal.
+*/
+void toggleValve()
+{
+    String state = "closed";
+    if (valveIsActivated)
+    {
+        state = "opened";
+    }
+    terminal.println("Valve " + state + " @ " + getTime());
+    terminal.flush();
+
+    digitalWrite(valvePin, valveIsActivated);
+    Blynk.virtualWrite(V11, valveIsActivated);
+}
+
+void getFlow()
+{
+    //TODO:
+    // Flow (L/min) =  pulseCounter (Hz) / 7.5.
+}
+
+void FlowIncrement()
+{
+    //TODO:
+}
+
+String getTime()
+{
+    String date = String(day()) + "/" + month() + "/" + year();
+    String time = String(hour()) + ":" + minute() + ":" + second();
+    return date + ' ' + time;
+}
+
+/* Blynk functions  */
+/**
+    Run when connected to Blynk.
+    Synchronize clock.
+*/
+BLYNK_CONNECTED()
+{
+    rtc.begin();
+    Blynk.virtualWrite(V7, 0);
+    Blynk.virtualWrite(V8, 0);
+    Blynk.virtualWrite(V13, 0);
+}
+
+/**
+    Run when changes on numeric input.
+    Store input value for duration in hours.
+*/
+BLYNK_WRITE(V7)
+{ // Numeric Input
+    inputValue = param.asInt();
+}
+
+/**
+    Run when changes on slider.
+    Store slider value for duration in minutes.
+*/
+BLYNK_WRITE(V8)
+{ // Slider
+    sliderValue = param.asInt();
+    Blynk.virtualWrite(V13, sliderValue);
+}
+
+/**
+    Run when activation button is pressed.
+    Activate/Deactivate valve.
+*/
+BLYNK_WRITE(V11)
+{ // Input Activation button
+    valveIsActivated = param.asInt();
+
+    if (valveIsActivated) // Start valve
+    {
+        duration = (sliderValue + (inputValue / 60)) * 60; // Total duration in seconds
+        startUnix = now();                                 // Get unix time (in seconds)
+        toggleValve();
+    }
+    else
+    {
+        toggleValve();
+    }
 }

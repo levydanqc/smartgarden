@@ -144,4 +144,6 @@ adding an infinite number of widgets).
   <dd><a href="https://github.com/blynkkk/blynk-library">Github</a></dd>
   <dt>How2Electronics: TDS Meter</dt>
   <dd><a href="https://how2electronics.com/iot-based-tds-meter-using-esp8266-for-water-quality-monitoring/">Github</a></dd>
+  <dt>The HookUp: GPIO_Limitations_ESP8266_NodeMCU.jpg</dt>
+  <dd><a href="https://github.com/thehookup/Wireless_MQTT_Doorbell/blob/master/GPIO_Limitations_ESP8266_NodeMCU.jpg">Github</a></dd>
 </dl>
