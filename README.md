@@ -5,6 +5,7 @@ Smart garden monitoring for growing vegetables and fruits with an NodeMcu and Bl
 ## Connections
 
 Because there's actually a lot of sensors (and I'm not that good with layout..), below is all the connections for the project.
+_In the Schemas folder, there is a schema for the connections of each sensors._
 
 | Board   | Vin | Gnd |     A0     |    D0     |     D1     |    D2    |   D5   |   D6   |   D7   |
 | ------- | :-: | :-: | :--------: | :-------: | :--------: | :------: | :----: | :----: | :----: |

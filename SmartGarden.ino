@@ -456,7 +456,7 @@ BLYNK_WRITE(V11)
     }
 }
 
-BLYNK_WRITE(V12)
+BLYNK_WRITE(V9)
 { // Timer button
     valveIsActivated = param.asInt();
     duration = -1;
