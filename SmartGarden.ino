@@ -1,11 +1,16 @@
 /***************************************************
 
+ * Smart Garden Monitoring
+
+
+ ** https://gitlab.com/levydanqc/smartgarden 
+
  ****************** Configuration ******************
-Enter at line 17 to 20:
-SSID "" : Name of your network
-PASSW "" : Password of your network
-ArduinoOTAHostname "" : Hostname for the OTA PORT setting
-ArduinoOTAPASSW "" : Password for the OTA upload
+Line 25:    SSID "PASSWORD_FOR_THE_ARDUINO"             -->     Name of your network
+Line 26:    PASSW "YOUR_WIFI_PASSWORD":                 -->     Password of your network
+Line 27:    ArduinoOTAHostname "NAME_FOR_THE_ARDUINO":  -->     Hostname for the OTA PORT setting
+Line 28:    ArduinoOTAPASSW "PASSWORD_FOR_THE_ARDUINO": -->     Password for the OTA upload
+Line 35:    char auth[] = "YOUR_BLYNK_TOKEN":           -->     Authentication token of the Blynk project
 
  ****************************************************
   © Copyright : see README.md
@@ -31,7 +36,19 @@ const char *OtaSSID = SSID;
 const char *OtaPassw = PASSW;
 /* END OTA */
 
+/* Blynk Setup*/
+char auth[] = "YOUR_BLYNK_TOKEN";
+char ssid[] = SSID;
+char pass[] = PASSW;
+BlynkTimer timer;
+WidgetTerminal terminal(V10);
+WidgetRTC rtc;
+byte sliderValue;
+float inputValue;
+/* END Blynk */
+
 /* Pinout */
+#define flowPin D0
 #define dhtPin D1
 #define valvePin D2
 #define analogPin A0
@@ -39,58 +56,49 @@ const char *OtaPassw = PASSW;
 const byte muxControls[3] = {D5, D6, D7};
 /* END Pinout */
 
-/* Virtual pinout */
-byte vTemp = V5;
-byte vHum = V4;
-byte vFlow = V6;
-/* END Virtual pinout */
-
 /* Multiplexer */
-#define nbAnalogique 4
+const byte inputAnalog = 4;
+const byte inputDigital = 7;
 const byte muxChannels[5][3] = {
     {0, 0, 0}, // Channel 0
     {1, 0, 0}, // Channel 1
     {0, 1, 0}, // Channel 2
     {1, 1, 0}, // Channel 3
     {0, 0, 1}  // Channel 4
+    {1, 0, 1}  // Channel 5
+    {0, 1, 1}  // Channel 6
+    {1, 1, 1}  // Channel 7
 };
 float (*func[])(){
     getMoisture1,
     getMoisture2,
     getLDR1,
-    getLDR2};
-float data[4];
+    getLDR2,
+    getHum,
+    getTemp,
+    getFlow};
 /* END Multiplexer */
 
-/* Blynk Setup*/
-char auth[] = "";
-char ssid[] = SSID;
-char pass[] = PASSW;
-BlynkTimer timer;
-const byte virtualPin[nbAnalogique] = {V0, V1, V2, V3};
-WidgetTerminal terminal(V10);
-WidgetRTC rtc;
-byte sliderValue;
-float inputValue;
-/* END Blynk */
-
 /* Valve */
-unsigned long startUnix;
+unsigned long startValve;
 float duration;
-bool valveIsActivated;
+int valveIsActivated;
 /* END Valve */
 
-/* DHT11 sensor */
+/* Flow Sensor */
+volatile byte flowCounter;
+float flowQ = 7.5;
+float startFlow;
+float flowRate;
+/* END Flow */
+
+/* DHT11 Sensor */
 dht11 Dht;
 float humidity;
 float temperature;
 /* END DHT11 */
 
-/* TDS sensor */
-#define tdsCoef 1
-/* END TDS */
-
-/* Moisture sensors */
+/* Moisture Sensor */
 #define MOISTURE_WATER 487
 #define MOISTURE_AIR 250
 float moisture1;
@@ -122,7 +130,7 @@ void setup()
 
     /* Blynk Setup */
     Blynk.begin(auth, ssid, pass, "192.168.1.100", 8080);
-    timer.setInterval(1000L, getData);
+    timer.setInterval(1000L, sendData);
     terminal.println("Connecté!");
     /* END Blynk */
 
@@ -182,6 +190,11 @@ void setup()
     terminal.println(WiFi.localIP());
     /* END OTA */
 
+    /* Flow Sensor Setup */
+    attachInterrupt(digitalPinToInterrupt(flowPin), FlowIncrement, RISING); // Create interrupts
+    noInterrupts();                                                         // Disable interrupts at beginning
+    /* END Flow */
+
     terminal.flush();
 }
 
@@ -198,83 +211,41 @@ void loop()
     @def Écrit chaque donnée sur les pins virtuelles
     de blynk.
 */
-void getData()
+void sendData()
 {
-    for (int i = 0; i < nbAnalogique; i++)
+    // Get data from analog inputs with multiplexer
+    for (int i = 0; i < inputAnalog; i++)
     {
         for (int j = 0; j < 3; j++)
         {
             digitalWrite(muxControls[j], muxChannels[i][j]);
         }
-
-        data[i] = (func[i])();
-        Blynk.virtualWrite(virtualPin[i], data[i]);
+        Blynk.virtualWrite(i, (func[i])());
+    }
+    // Get data from digital inputs
+    for (int i = inputAnalog; i < inputDigital; i++)
+    {
+        Blynk.virtualWrite(i, (func[i])());
     }
 
-    humidity = getHum();
-    temperature = getTemp();
-    Blynk.virtualWrite(vHum, humidity);
-    Blynk.virtualWrite(vTemp, temperature);
-
-    // for (int j = 0; j < 3; j++)
-    // {
-    //     digitalWrite(muxControls[j], muxChannels[nbAnalogique][j]);
-    // }
-    // float tds = getTds(temperature);
-    // Blynk.virtualWrite(V6, tds);
-
-    // Calculate Valve opening duration
-    if (valveIsActivated && now() >= (startUnix + duration))
+    // Calculate valve opening duration
+    if (valveIsActivated && duration != -1 && now() >= (startValve + duration))
     {
         valveIsActivated = false;
         toggleValve();
     }
-}
 
-/**
-    Get humidity from DHT11 sensor.
-
-    @return Humidity from DHT11 in %.
-*/
-float getTemp()
-{
-    Dht.read(dhtPin);              // Retreive value
-    return (float)Dht.temperature; // Return humidity
-}
-
-/**
-    Get temperature from DHT11 sensor.
-
-    @return Temperature from DHT11 in °C.
-*/
-float getHum()
-{
-    Dht.read(dhtPin);           // Retreive value
-    return (float)Dht.humidity; // Return humidity
-}
-
-/**
-    Get value from TDS sensor in ppm.
-
-    @param temp Temperature at which measure was taken for compensation.
-    @return Tds value of sensor in ppm.
-*/
-float getTds(float temp)
-{
-    float value;
-    for (int i = 0; i < 100; i++) // Retrieving a hundred value for accuracy
+    if (valveIsActivated && flowRate < 5) // Notify is valve was opened but water isn't going through or flow rate is too small.
     {
-        value += analogRead(analogPin);
-        delay(1);
+        Blynk.notify("There was an error with the opening of the valve.");
     }
 
-    float rawEc = value * 5 / 1024.0;            // Convert value to current
-    float tempCoef = 1.0 + 0.02 * (temp - 25.0); // Find temperature compensation value
-
-    float ec = (rawEc / tempCoef) * tdsCoef;                                  // Add temperature compensation and calibration coef
-    float tds = (133.42 * pow(ec, 3) - 255.86 * ec * ec + 857.39 * ec) * 0.5; // Convert voltage to tds
-
-    return tds;
+    // Notify if valve opened for too long
+    int time = now() - startValve;
+    if ((time % (45 * 60)) == 0) // Every 45 min
+    {
+        Blink.notify("Valve has been opened for " + time / 60 + " minutes.");
+    }
 }
 
 /**
@@ -348,7 +319,63 @@ float getLDR2()
 }
 
 /**
-    Togge between state of valve and print it to terminal.
+    Get temperature from DHT11 sensor.
+
+    @return Temperature from DHT11 in °C.
+*/
+float getHum()
+{
+    Dht.read(dhtPin);           // Retreive value
+    return (float)Dht.humidity; // Return humidity
+}
+
+/**
+    Get humidity from DHT11 sensor.
+
+    @return Humidity from DHT11 in %.
+*/
+float getTemp()
+{
+    Dht.read(dhtPin);              // Retreive value
+    return (float)Dht.temperature; // Return humidity
+}
+
+/**
+   Get flow rate from sensor in L/min.
+   
+    @return Flow rate in L/min or 0 if valve isn't opened yet.
+  */
+float getFlow()
+{
+    if (valveIsActivated)
+    {
+        if (startFlow == 0)
+        {
+            startFlow = now();
+            interrupts();
+            return flowRate * valveIsActivated; // Return 0 if valve is closed, flow rate otherwise
+        }
+        else
+        {
+            noInterrupts();
+            flowRate = ((1000.0 / (now() - startFlow)) * flowCounter) / flowQ; // Flow rate in L/min
+            startFlow = 0;
+            return flowRate * valveIsActivated; // Return 0 if valve is closed, flow rate otherwise
+        }
+    }
+    return 0;
+}
+
+/**
+   Increment the number of loop of the magnet by one.
+  */
+ICACHE_RAM_ATTR void FlowIncrement()
+{
+    flowCounter++;
+}
+
+/**
+    Togge between state (open/close) of valve and print it to terminal.
 */
 void toggleValve()
 {
@@ -357,6 +384,7 @@ void toggleValve()
     {
         state = "opened";
     }
+
     terminal.println("Valve " + state + " @ " + getTime());
     terminal.flush();
 
@@ -364,17 +392,9 @@ void toggleValve()
     Blynk.virtualWrite(V11, valveIsActivated);
 }
 
-void getFlow()
-{
-    //TODO:
-    // Flow (L/min) =  pulseCounter (Hz) / 7.5.
-}
-
-void FlowIncrement()
-{
-    //TODO:
-}
-
+/**
+   Return current date and time inside a string.
+ */
 String getTime()
 {
     String date = String(day()) + "/" + month() + "/" + year();
@@ -390,8 +410,10 @@ String getTime()
 BLYNK_CONNECTED()
 {
     rtc.begin();
-    Blynk.virtualWrite(V7, 0);
-    Blynk.virtualWrite(V8, 0);
+    for (byte i = 0; i < 9; i++)
+    {
+        Blynk.virtualWrite(i, 0);
+    }
     Blynk.virtualWrite(V13, 0);
 }
 
@@ -425,11 +447,18 @@ BLYNK_WRITE(V11)
     if (valveIsActivated) // Start valve
     {
         duration = (sliderValue + (inputValue / 60)) * 60; // Total duration in seconds
-        startUnix = now();                                 // Get unix time (in seconds)
+        startValve = now();                                // Get unix time (in seconds)
         toggleValve();
     }
     else
     {
         toggleValve();
     }
+}
+
+BLYNK_WRITE(V12)
+{ // Timer button
+    valveIsActivated = param.asInt();
+    duration = -1;
+    toggleValve();
 }

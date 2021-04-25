@@ -1,22 +1,22 @@
 # SmartGarden
 
-Smart garden monitoring for growing vegetables and fruits with an Arduino and Blynk platform.
+Smart garden monitoring for growing vegetables and fruits with an NodeMcu and Blynk platform.
 
 ## Connections
 
 Because there's actually a lot of sensors (and I'm not that good with layout..), below is all the connections for the project.
 
-| Board   | Vin | Gnd |     A0     |   D0   |   D1   |   D2   |     D3     |    D8    |
-| ------- | :-: | :-: | :--------: | :----: | :----: | :----: | :--------: | :------: |
-| NodeMcu | 12V | Gnd | MUX:COM(Z) | MUX:S0 | MUX:S1 | MUX:S2 | DHT11:Data | NPN:Base |
+| Board   | Vin | Gnd |     A0     |    D0     |     D1     |    D2    |   D5   |   D6   |   D7   |
+| ------- | :-: | :-: | :--------: | :-------: | :--------: | :------: | :----: | :----: | :----: |
+| NodeMcu | 12V | Gnd | MUX:COM(Z) | Flow:Data | DHT11:Data | NPN:Base | MUX:S0 | MUX:S1 | MUX:S2 |
 
-| Components  | Vcc | Gnd | COM (Z) | S0  | S1  | S2  | CH0 | CH1 | CH2  | CH3  | CH4 |
-| ----------- | :-: | :-: | :-----: | :-: | :-: | :-: | :-: | :-: | :--: | :--: | :-: |
-| Multiplexer | 12V | Gnd |   A0    | D0  | D1  | D2  | SM1 | SM2 | LDR1 | LDR2 | TDS |
+| Components  | Vcc | Gnd | COM (Z) | S0  | S1  | S2  | CH0 | CH1 | CH2  | CH3  |
+| ----------- | :-: | :-: | :-----: | :-: | :-: | :-: | :-: | :-: | :--: | :--: |
+| Multiplexer | 12V | Gnd |   A0    | D5  | D6  | D7  | SM1 | SM2 | LDR1 | LDR2 |
 
 | Components     |   Base   | Emmiter | Collector |
 | -------------- | :------: | :-----: | :-------: |
-| NPN transistor | D8 (1kΩ) |   Gnd   | Valve[-]  |
+| NPN transistor | D1 (1kΩ) |   Gnd   | Valve[-]  |
 
 | Components      | Positive | Negative | Data | Infos |
 | --------------- | :------: | :------: | :--: | :---: |
@@ -25,12 +25,12 @@ Because there's actually a lot of sensors (and I'm not that good with layout..),
 |                 | SD:In[+] |   Gnd    |      |       |
 | Valve           |   12V    |   Gnd    |      |       |
 | Diode           | Valve[+] | Valve[-] |      |       |
-| DHT11           |    5V    |   Gnd    |  D3  | PU-10 |
+| DHT11           |    5V    |   Gnd    |  D2  | PU-10 |
 | Soil Moisture 1 |    5V    |   Gnd    | CH0  |       |
 | Soil Moisture 2 |    5V    |   Gnd    | CH1  |       |
 | Photocell 1     |    5V    |   Gnd    | CH2  | PD-1  |
 | Photocell 2     |    5V    |   Gnd    | CH3  | PD-1  |
-| TDS Sensor      |    5V    |   Gnd    | CH4  |       |
+| Flow Sensor     |    5V    |   Gnd    |  D0  |       |
 
 <dl>
   <dt>SM</dt>
@@ -53,7 +53,7 @@ _Ground connections are not important as long as they are wired together._ <br>
 
 ## Configuration
 
-To configure the project, all you need to do is enter your own informations from line 17 to 20. You will need the name and password of your WIFI and a hostname for the board as well as a password that you can create (It is optional, but for security purposes I more comfortable using one).
+To configure the project, all you need to do is enter your own informations from line 17 to 20. You will need the name and password of your WIFI and a hostname for the board as well as a password that you can create (It is optional, but for security purposes we were more comfortable using one).
 The hostname will appear in the PORT setting of the Arduino IDE when you want to upload code and the password will be asked after compiling, just before uploading.
 
 ## Over-the-Air (OTA) Upload
@@ -65,16 +65,30 @@ The first upload need, obviously, to be wired to the board, but after that we ca
 
 **It is important to upload the OTA code and librairies each time to be sure it will still be accessible.**
 
-## TDS Sensor
+## Flow Sensor
 
-To enter in calibration mode, send via the Serial:
+The flow sensor is being used primarily for testing the opening command of the valve.
+It precision or accuracy isn't really what matters most as any value means the valve was opened and the system is working well.
+His working principle is based on the Hall Effect: there is a rotor inside that makes loop when water goes though it with a magnet on one of the propeller and it outputs a signal each time the magnet complete one loop.
 
-> - enter -> let you enter inside calibration mode
-> - cal:value -> send known TDS value of solution (@25°C)
->   - _e.g._: cal:504
-> - exit -> save the calibration into the sensor and exit calibration mode
+In the datasheet of the sensor there is coefficient often written like: `F = 7.5Q`. This number represents the quantity of water that has passed for each loop and is used to calculate the flow rate.
 
-_I could have used the GravityTDS Library to retrieve data from the sensor in the main code but I found myself having some trouble with that when used with the NodeMcu and a Multiplexer, I still don't know where the trouble came from. Anyway, I searched for the actual logic behind getting the TDS value from the analog sensor and used it._
+The formula is quite simple:
+
+```
+Flow rate (L/min) = Nb of loop for 1 sec / flow coefficient.
+```
+
+In this program, we used `attachInterrupt()` function from the arduino library that can asynchronously do a task when a physical pin receive a signal. Because of the way Blynk works we cannot use the `delay()` function to wait 1 second so instead, we began the interrupts (so that it increment a variable each time the signal is received) and at the next iteration we stop the interrupts and start calculate the flow rate using the actual time passed from the moment started it.
+
+The adapted formula is then:
+
+```
+Flow rate (L/min) = ((1000.0 / (now() - start)) * count) / flowQ.
+```
+
+_We need to convert the number of loop from the nuber of seconds it was measure to 1 second._
+_Where now() is the current time in unix (since epoch), start is the time we start counting signals (also in unix), count is the number of loop the magnet did and flowQ is the flow sensor coefficient._
 
 ### Important
 
@@ -127,7 +141,7 @@ Below is a table for each combination (it is basically a binary table with 3 bit
 
 ## [Installation of Blynk Local Server](https://github.com/blynkkk/blynk-server)
 
-For my project I use the Blynk Local Server. The installation can be found [on their GitHub](https://github.com/blynkkk/blynk-server) and it is pretty straight-forward.
+For my project we used the Blynk Local Server. The installation can be found [on their GitHub](https://github.com/blynkkk/blynk-server) and it is pretty straight-forward.
 The advantages of using your own local server is that you have a full control on what's happening, on the data that is being retrieved (could be
 useful if like GPS was enabled on the app) so that your data isn't stored inside blynk server. Also, it is actually faster to use a local server
 because of the distance the signal has to travel and more importantly, you can have as much Blynk Energy you want (so that you can customize your app by
