@@ -7,17 +7,17 @@ Smart garden monitoring for growing vegetables and fruits with an NodeMcu and Bl
 Because there's actually a lot of sensors (and I'm not that good with layout..), below is all the connections for the project.
 _In the Schemas folder, there is a schema for the connections of each sensors._
 
-| Board   | Vin | Gnd |     A0     |    D0     |     D1     |    D2    |   D5   |   D6   |   D7   |
-| ------- | :-: | :-: | :--------: | :-------: | :--------: | :------: | :----: | :----: | :----: |
-| NodeMcu | 12V | Gnd | MUX:COM(Z) | Flow:Data | DHT11:Data | NPN:Base | MUX:S0 | MUX:S1 | MUX:S2 |
+| Board   | Vin | Gnd |     A0     |    D0     |     D1     |     D2      |   D5   |   D6   |   D7   |
+| ------- | :-: | :-: | :--------: | :-------: | :--------: | :---------: | :----: | :----: | :----: |
+| NodeMcu | 12V | Gnd | MUX:COM(Z) | Flow:Data | DHT11:Data | Mosfet:Gate | MUX:S0 | MUX:S1 | MUX:S2 |
 
 | Components  | Vcc | Gnd | COM (Z) | S0  | S1  | S2  | CH0 | CH1 | CH2  | CH3  |
 | ----------- | :-: | :-: | :-----: | :-: | :-: | :-: | :-: | :-: | :--: | :--: |
 | Multiplexer | 12V | Gnd |   A0    | D5  | D6  | D7  | SM1 | SM2 | LDR1 | LDR2 |
 
-| Components     |   Base   | Emmiter | Collector |
-| -------------- | :------: | :-----: | :-------: |
-| NPN transistor | D1 (1kΩ) |   Gnd   | Valve[-]  |
+| Components |    Gate    | Source |  Drain   |
+| ---------- | :--------: | :----: | :------: |
+| Mosfet     | D2 (PU-10) |  Gnd   | Valve[-] |
 
 | Components      | Positive | Negative | Data | Infos |
 | --------------- | :------: | :------: | :--: | :---: |
@@ -26,12 +26,12 @@ _In the Schemas folder, there is a schema for the connections of each sensors._
 |                 | SD:In[+] |   Gnd    |      |       |
 | Valve           |   12V    |   Gnd    |      |       |
 | Diode           | Valve[+] | Valve[-] |      |       |
-| DHT11           |    5V    |   Gnd    |  D2  | PU-10 |
-| Soil Moisture 1 |    5V    |   Gnd    | CH0  |       |
-| Soil Moisture 2 |    5V    |   Gnd    | CH1  |       |
-| Photocell 1     |    5V    |   Gnd    | CH2  | PD-1  |
-| Photocell 2     |    5V    |   Gnd    | CH3  | PD-1  |
-| Flow Sensor     |    5V    |   Gnd    |  D0  |       |
+| DHT11           |    3V    |   Gnd    |  D1  | PU-10 |
+| Soil Moisture 1 |    3V    |   Gnd    | CH0  |       |
+| Soil Moisture 2 |    3V    |   Gnd    | CH1  |       |
+| Photocell 1     |    3V    |   Gnd    | CH2  | PD-1  |
+| Photocell 2     |    3V    |   Gnd    | CH3  | PD-1  |
+| Flow Sensor     |    3V    |   Gnd    |  D0  |       |
 
 <dl>
   <dt>SM</dt>
@@ -48,7 +48,7 @@ _In the Schemas folder, there is a schema for the connections of each sensors._
   <dd>Pull-Down Resistors of _Value_ kΩ.</dd>
 </dl>
 
-_12V refers to the power supply._ | _5V to the output of the Step-Down._
+_12V refers to the power supply._ | _3V to the output of the NodeMcu._
 _Ground connections are not important as long as they are wired together._ <br>
 **Please make sure to double check your wiring before connecting the power supply as a wrong connection could fry your components. Also make sure to check all pull-down or pull-up resistors on the schema.**
 
@@ -91,11 +91,6 @@ Flow rate (L/min) = ((1000.0 / (now() - start)) * count) / flowQ.
 _We need to convert the number of loop from the nuber of seconds it was measure to 1 second._
 _Where now() is the current time in unix (since epoch), start is the time we start counting signals (also in unix), count is the number of loop the magnet did and flowQ is the flow sensor coefficient._
 
-### Important
-
-To actually work on a NodeMcu, we have to change a value inside the GravityTDS library file so that we can calibrate the sensor. By opening the file: _GravityTDS.cpp_ and changes the value of line 39: `this->pin = A1;` to `this->pin = A0;` because of the one and only analog pin of the NodeMcu.
-This file is inside the folder GravityTDS.
-
 ## Soil Moisture Sensor
 
 To calibrate the soil moisture sensor:
@@ -109,15 +104,9 @@ The water valve need a 12V power supply and about 600 mA, but each items is diff
 so check your datasheet to be sure. Also, there is no polarity so you can connect either pin
 to ground and positive.
 
-## DC-DC Step-Down Converter
+## Mosfet IRF540N
 
-Because the solenoide water valve need 12V, we will use a power supply of 12V.
-The NodeMcu can be power with the same power supply via the Vin pin that can take
-from 6V to 12V because of the on-board 3.3V regulator.
-However, because of the analog reading of all the sensors, powering them with the 3.3V
-pins of the NodeMcu would limit the range of values to 675 possibilities instead of the
-1024 normally. That's why a DC-DC Step-Down converter is used, to output 5V from the 12V
-power supply for all the sensors.
+A simple NPN transistor cannot take the power the solenoid valve needs, that is why a mosfet transistor is used. We control the solenoid valve with the Gate pin of the mosfet that, when HIGH, let current flow between Source and Drain.
 
 ## Multiplexer CD74HC4051
 

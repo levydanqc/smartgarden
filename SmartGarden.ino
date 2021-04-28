@@ -59,7 +59,7 @@ const byte muxControls[3] = {D5, D6, D7};
 /* Multiplexer */
 const byte inputAnalog = 4;
 const byte inputDigital = 7;
-const byte muxChannels[5][3] = {
+const byte muxChannels[8][3] = {
     {0, 0, 0}, // Channel 0
     {1, 0, 0}, // Channel 1
     {0, 1, 0}, // Channel 2
@@ -99,8 +99,8 @@ float temperature;
 /* END DHT11 */
 
 /* Moisture Sensor */
-#define MOISTURE_WATER 487
-#define MOISTURE_AIR 250
+#define MOISTURE_WATER 300
+#define MOISTURE_AIR 670
 float moisture1;
 float moisture2;
 /* END Moisture */
@@ -242,9 +242,9 @@ void sendData()
 
     // Notify if valve opened for too long
     int time = now() - startValve;
-    if ((time % (45 * 60)) == 0) // Every 45 min
+    if (valveIsActivated && (time % (60 * 60) == 0)) // Every 1 hour
     {
-        Blink.notify("Valve has been opened for " + time / 60 + " minutes.");
+        Blink.notify("Valve has been opened for " + String(time / 60) + " minutes.");
     }
 }
 
