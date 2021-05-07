@@ -64,9 +64,9 @@ const byte muxChannels[8][3] = {
     {1, 0, 0}, // Channel 1
     {0, 1, 0}, // Channel 2
     {1, 1, 0}, // Channel 3
-    {0, 0, 1}  // Channel 4
-    {1, 0, 1}  // Channel 5
-    {0, 1, 1}  // Channel 6
+    {0, 0, 1}, // Channel 4
+    {1, 0, 1}, // Channel 5
+    {0, 1, 1}, // Channel 6
     {1, 1, 1}  // Channel 7
 };
 float (*func[])(){
@@ -81,7 +81,7 @@ float (*func[])(){
 
 /* Valve */
 unsigned long startValve;
-float duration;
+int duration;
 int valveIsActivated;
 /* END Valve */
 
@@ -228,23 +228,25 @@ void sendData()
         Blynk.virtualWrite(i, (func[i])());
     }
 
-    // Calculate valve opening duration
+    // Check valve opening duration
     if (valveIsActivated && duration != -1 && now() >= (startValve + duration))
     {
         valveIsActivated = false;
+        terminal.println("Closed valve after duration.");
+        terminal.flush();
         toggleValve();
     }
-
-    if (valveIsActivated && flowRate < 5) // Notify is valve was opened but water isn't going through or flow rate is too small.
+    // Check flow rate to verify that the valve was opened
+    if (valveIsActivated && flowRate < 5)
     {
         Blynk.notify("There was an error with the opening of the valve.");
     }
 
-    // Notify if valve opened for too long
-    int time = now() - startValve;
-    if (valveIsActivated && (time % (60 * 60) == 0)) // Every 1 hour
+    // Notify if valve opened for a certain time (like if user inputs is too big)
+    int openedDuration = now() - startValve;
+    if (valveIsActivated && openedDuration > 0 && (openedDuration % (60 * 60) == 0)) // Every hour
     {
-        Blink.notify("Valve has been opened for " + String(time / 60) + " minutes.");
+        Blynk.notify("Valve has been opened for " + String(openedDuration / 60) + " minutes.");
     }
 }
 
@@ -342,9 +344,9 @@ float getTemp()
 
 /**
    Get flow rate from sensor in L/min.
-   
+
     @return Flow rate in L/min or 0 if valve isn't opened yet.
-  */
+*/
 float getFlow()
 {
     if (valveIsActivated)
@@ -368,7 +370,7 @@ float getFlow()
 
 /**
    Increment the number of loop of the magnet by one.
-  */
+*/
 ICACHE_RAM_ATTR void FlowIncrement()
 {
     flowCounter++;
@@ -388,13 +390,21 @@ void toggleValve()
     terminal.println("Valve " + state + " @ " + getTime());
     terminal.flush();
 
-    digitalWrite(valvePin, valveIsActivated);
-    Blynk.virtualWrite(V11, valveIsActivated);
+    digitalWrite(valvePin, valveIsActivated);  // Open valve
+    Blynk.virtualWrite(V14, valveIsActivated); // Blynk chart of valve state
+    if (duration != -1)
+    {
+        Blynk.virtualWrite(V11, valveIsActivated);
+    }
+    else
+    {
+        Blynk.virtualWrite(V11, 0);
+    }
 }
 
 /**
    Return current date and time inside a string.
- */
+*/
 String getTime()
 {
     String date = String(day()) + "/" + month() + "/" + year();
@@ -414,6 +424,7 @@ BLYNK_CONNECTED()
     {
         Blynk.virtualWrite(i, 0);
     }
+    Blynk.virtualWrite(V12, 0);
     Blynk.virtualWrite(V13, 0);
 }
 
@@ -421,44 +432,76 @@ BLYNK_CONNECTED()
     Run when changes on numeric input.
     Store input value for duration in hours.
 */
-BLYNK_WRITE(V7)
-{ // Numeric Input
-    inputValue = param.asInt();
+BLYNK_WRITE(V7) // Numeric Input
+{
+    inputValue = param.asFloat();
+    int totalMinutes = (sliderValue % 60) + (inputValue - (int)inputValue) * 60;
+    Blynk.virtualWrite(V12, ((int)inputValue + (sliderValue / 60) + (totalMinutes / 60)));
+    Blynk.virtualWrite(V13, (totalMinutes % 60));
 }
 
 /**
     Run when changes on slider.
     Store slider value for duration in minutes.
 */
-BLYNK_WRITE(V8)
-{ // Slider
+BLYNK_WRITE(V8) // Slider
+{
     sliderValue = param.asInt();
-    Blynk.virtualWrite(V13, sliderValue);
+    int totalMinutes = (sliderValue % 60) + (inputValue - (int)inputValue) * 60;
+    Blynk.virtualWrite(V12, ((int)inputValue + (sliderValue / 60) + (totalMinutes / 60)));
+    Blynk.virtualWrite(V13, (totalMinutes % 60));
 }
 
 /**
     Run when activation button is pressed.
     Activate/Deactivate valve.
 */
-BLYNK_WRITE(V11)
-{ // Input Activation button
-    valveIsActivated = param.asInt();
-
-    if (valveIsActivated) // Start valve
+BLYNK_WRITE(V11) // Input Activation button
+{
+    if (duration != -1) // Timer not running
     {
-        duration = (sliderValue + (inputValue / 60)) * 60; // Total duration in seconds
-        startValve = now();                                // Get unix time (in seconds)
+        valveIsActivated = param.asInt();
+        if (valveIsActivated) // Start valve
+        {
+
+            duration = (sliderValue + (int)(inputValue * 60)) * 60; // Total duration in seconds
+            startValve = now();                                     // Get unix time (in seconds)
+            terminal.println("Manually opened valve.");
+            terminal.flush();
+            toggleValve();
+        }
+        else
+        {
+            duration = 0;
+            startValve = 0;
+            terminal.println("Manually closed valve.");
+            terminal.flush();
+            toggleValve();
+        }
+    }
+    else
+    {
+        Blynk.notify("Timer currently running.");
+    }
+}
+
+/**
+   Run when timer is activated.
+   Adapt duration for timer and open/close valve.
+*/
+BLYNK_WRITE(V9) // Timer button
+{
+    if (startValve == 0) // Activation button not running
+    {
+        valveIsActivated = param.asInt();
+
+        duration = 0 - valveIsActivated; // duration = -1 when running, 0 otherwise
+        terminal.println("Timer toggled valve.");
+        terminal.flush();
         toggleValve();
     }
     else
     {
-        toggleValve();
+        Blynk.notify("Manual button currently running.");
     }
-}
-
-BLYNK_WRITE(V9)
-{ // Timer button
-    valveIsActivated = param.asInt();
-    duration = -1;
-    toggleValve();
 }
