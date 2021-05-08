@@ -15,6 +15,13 @@ Line 35:    char auth[] = "YOUR_BLYNK_TOKEN":           -->     Authentication t
  ****************************************************
   © Copyright : see README.md
 ****************************************************/
+/* 
+ * Uncomment next line for debugging connection issues.
+ * It will print to serial information about WIFI connection
+ * and local server. 
+*/
+// #define BLYNK_PRINT Serial
+
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
 #include "dht11.h"

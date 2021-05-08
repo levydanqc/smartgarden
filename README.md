@@ -1,6 +1,7 @@
 Quick links:
 
-- [Latest release](https://gitlab.com/levydanqc/smartgarden/-/archive/v.1.0.0/smartgarden-v.1.0.0.zip)
+- [Latest release](https://github.com/levydanqc/smartgarden/releases/latest)
+- [GitHub](https://github.com/levydanqc/smartgarden)
 - [Arduino Projet](https://arduino-esp8266.readthedocs.io/en/latest/)
 
 ===========================================
