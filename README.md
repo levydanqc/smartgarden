@@ -1,6 +1,20 @@
-# SmartGarden
+Quick links:
 
-Smart garden monitoring for growing vegetables and fruits with an NodeMcu and Blynk platform.
+- [Latest release](https://gitlab.com/levydanqc/smartgarden/-/archive/v.1.0.0/smartgarden-v.1.0.0.zip)
+- [Arduino Projet](https://arduino-esp8266.readthedocs.io/en/latest/)
+
+===========================================
+
+# SmartGardener
+
+Smart garden monitoring system for growing vegetables and fruits with an NodeMcu and Blynk platform.
+
+## My Story
+
+At some points in life, we all tried to do some sort of gardening. Whether it is to embellish our house, to tried to grow some food or to prove to ourselves that we're able to take care of something else and not let it die, the process of planting some seeds in the ground isn't easy.
+The problem is that humankind isn't the most reliable. How many of us forgot to take the cake out of the oven, to put the lid back on the peanut butter jar or even to water the plants and thought "Man ! Not again.". What if I told you there is an other way ? Today's technology let us automate virtually anything, from turning on and off the lights, brewing coffee each morning or cooking delicious meal.
+Combining automation, micro-controllers and plants isn't new, there's plenty of projects on the internet about people trying to create their own garden monitoring system. Mine isn't that much different than theirs except that for one, almost everything is combined together. I've searched for a project where there would be soil moisture sensors, lights sensors, solenoid water valve, etc. as well as being able to control everything remotely before deciding to build my own.
+It does work like I wanted, but there is so much more sensors and logic that I could and would like to add to this project, like TDS sensor (for water quality), controlling multiples valve for multiples garden, but one thing at a time.
 
 ## Connections
 

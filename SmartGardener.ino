@@ -208,7 +208,7 @@ void loop()
 /**
     Point d'entrée de Blynk.
 
-    @def Écrit chaque donnée sur les pins virtuelles
+    Écrit chaque donnée sur les pins virtuelles
     de blynk.
 */
 void sendData()

@@ -4,11 +4,10 @@ Ideas of what to add for the future.
 
 ### In Progress
 
-- [ ]
+- [ ] Create file for soil moisture calibration
 
 ### For the future
 
-- [ ] Create file for soil moisture calibration
 - [ ] Get forecast weather
 - [ ] Optimize variable size
 
