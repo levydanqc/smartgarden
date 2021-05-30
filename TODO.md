@@ -13,8 +13,8 @@ Ideas of what to add for the future.
 
 ### Done ✓
 
-- [✓] Switch valve with duration
-- [✓] Add a notification when online
+- [x] Switch valve with duration
+- [x] Add a notification when online
 
 ### Personal Notes
 

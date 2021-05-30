@@ -20,17 +20,21 @@ Line 35:    char auth[] = "YOUR_BLYNK_TOKEN":           -->     Authentication t
  * It will print to serial information about WIFI connection
  * and local server. 
 */
-// #define BLYNK_PRINT Serial
+#define BLYNK_PRINT Serial
 
-#include <ESP8266WiFi.h>
-#include <BlynkSimpleEsp8266.h>
-#include "dht11.h"
-// For OTA upload
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
-#include <ArduinoOTA.h>
+// ESP32
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
 #include <TimeLib.h>
 #include <WidgetRTC.h>
+
+// For OTA upload
+#include <ESPmDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+
+#include "dht11.h"
 
 /* OTA Setup */
 #ifndef SSID
@@ -48,43 +52,31 @@ char auth[] = "YOUR_BLYNK_TOKEN";
 char ssid[] = SSID;
 char pass[] = PASSW;
 BlynkTimer timer;
-WidgetTerminal terminal(V10);
+WidgetTerminal terminal(V13);
 WidgetRTC rtc;
 byte sliderValue;
 float inputValue;
 /* END Blynk */
 
 /* Pinout */
-#define flowPin D0
-#define dhtPin D1
-#define valvePin D2
-#define analogPin A0
-#define muxOutput A0;
-const byte muxControls[3] = {D5, D6, D7};
+#define valvePin 33
+#define moisturePin1 32
+#define moisturePin2 34
+#define ldrPin 35
+#define flowPin 39
+#define dhtPin 36
 /* END Pinout */
 
-/* Multiplexer */
-const byte inputAnalog = 4;
-const byte inputDigital = 7;
-const byte muxChannels[8][3] = {
-    {0, 0, 0}, // Channel 0
-    {1, 0, 0}, // Channel 1
-    {0, 1, 0}, // Channel 2
-    {1, 1, 0}, // Channel 3
-    {0, 0, 1}, // Channel 4
-    {1, 0, 1}, // Channel 5
-    {0, 1, 1}, // Channel 6
-    {1, 1, 1}  // Channel 7
-};
+/* Function */
+const byte inputs = 5;
 float (*func[])(){
     getMoisture1,
     getMoisture2,
-    getLDR1,
-    getLDR2,
-    getHum,
+    getLDR,
+    getFlow,
     getTemp,
-    getFlow};
-/* END Multiplexer */
+    getHum};
+/* END Function */
 
 /* Valve */
 unsigned long startValve;
@@ -116,12 +108,12 @@ float moisture2;
 #define LDR_MIN 0
 #define LDR_MAX 1000
 float ldr1;
-float ldr2;
 /* END LDR */
 
 void setup()
 {
     Serial.begin(9600);
+
     /* OTA Setup */
     WiFi.mode(WIFI_STA);
     WiFi.begin(OtaSSID, OtaPassw);
@@ -140,13 +132,6 @@ void setup()
     timer.setInterval(1000L, sendData);
     terminal.println("Connecté!");
     /* END Blynk */
-
-    /* Mux setup */
-    for (int i = 0; i < 3; i++)
-    {
-        pinMode(muxControls[i], OUTPUT);
-    }
-    /* END Mux */
 
     /* OTA Setup */
     ArduinoOTA.onStart([]() {
@@ -220,17 +205,8 @@ void loop()
 */
 void sendData()
 {
-    // Get data from analog inputs with multiplexer
-    for (int i = 0; i < inputAnalog; i++)
-    {
-        for (int j = 0; j < 3; j++)
-        {
-            digitalWrite(muxControls[j], muxChannels[i][j]);
-        }
-        Blynk.virtualWrite(i, (func[i])());
-    }
-    // Get data from digital inputs
-    for (int i = inputAnalog; i < inputDigital; i++)
+    // Get data from sensors
+    for (int i = 0; i <= inputs; i++)
     {
         Blynk.virtualWrite(i, (func[i])());
     }
@@ -246,14 +222,14 @@ void sendData()
     // Check flow rate to verify that the valve was opened
     if (valveIsActivated && flowRate < 5)
     {
-        Blynk.notify("There was an error with the opening of the valve.");
+        //Blynk.notify("Erreur d'ouverture de la valve. Débit trop faible.");
     }
 
     // Notify if valve opened for a certain time (like if user inputs is too big)
     int openedDuration = now() - startValve;
     if (valveIsActivated && openedDuration > 0 && (openedDuration % (60 * 60) == 0)) // Every hour
     {
-        Blynk.notify("Valve has been opened for " + String(openedDuration / 60) + " minutes.");
+        //Blynk.notify("La valve est ouverte depuis " + String(openedDuration / 60) + " minutes.");
     }
 }
 
@@ -266,7 +242,7 @@ float getMoisture1()
 {
     for (int i = 0; i < 100; i++) // Retrieving a hundred value for accuracy
     {
-        moisture1 += analogRead(analogPin);
+        moisture1 += analogRead(moisturePin1);
         delay(1);
     }
     moisture1 = moisture1 / 100.0; // Get average value
@@ -284,7 +260,7 @@ float getMoisture2()
 {
     for (int i = 0; i < 100; i++) // Retrieving a hundred value for accuracy
     {
-        moisture2 += analogRead(analogPin);
+        moisture2 += analogRead(moisturePin2);
         delay(1);
     }
     moisture2 = moisture2 / 100.0; // Get average value
@@ -298,11 +274,11 @@ float getMoisture2()
 
     @return Light intensity from sensor 1 in %.
 */
-float getLDR1()
+float getLDR()
 {
     for (int i = 0; i < 100; i++)
     {
-        ldr1 += analogRead(analogPin);
+        ldr1 += analogRead(ldrPin);
         delay(1);
     }
     ldr1 = ldr1 / 100.0;
@@ -311,42 +287,11 @@ float getLDR1()
 }
 
 /**
-    Get light intensity from sensor 2 in percent.
-
-    @return Light intensity from sensor 2 in %.
+   Increment the number of loop of the magnet by one.
 */
-float getLDR2()
+ICACHE_RAM_ATTR void FlowIncrement()
 {
-    for (int i = 0; i < 100; i++)
-    {
-        ldr2 += analogRead(analogPin);
-        delay(1);
-    }
-    ldr2 = ldr2 / 100.0;
-    ldr2 = map(ldr2, LDR_MIN, LDR_MAX, 0, 100);
-    return constrain(ldr2, 0, 100);
-}
-
-/**
-    Get temperature from DHT11 sensor.
-
-    @return Temperature from DHT11 in °C.
-*/
-float getHum()
-{
-    Dht.read(dhtPin);           // Retreive value
-    return (float)Dht.humidity; // Return humidity
-}
-
-/**
-    Get humidity from DHT11 sensor.
-
-    @return Humidity from DHT11 in %.
-*/
-float getTemp()
-{
-    Dht.read(dhtPin);              // Retreive value
-    return (float)Dht.temperature; // Return humidity
+    flowCounter++;
 }
 
 /**
@@ -376,11 +321,25 @@ float getFlow()
 }
 
 /**
-   Increment the number of loop of the magnet by one.
+    Get humidity from DHT11 sensor.
+
+    @return Humidity from DHT11 in %.
 */
-ICACHE_RAM_ATTR void FlowIncrement()
+float getTemp()
 {
-    flowCounter++;
+    Dht.read(dhtPin);              // Retreive value
+    return (float)Dht.temperature; // Return humidity
+}
+
+/**
+    Get temperature from DHT11 sensor.
+
+    @return Temperature from DHT11 in °C.
+*/
+float getHum()
+{
+    Dht.read(dhtPin);           // Retreive value
+    return (float)Dht.humidity; // Return humidity
 }
 
 /**
@@ -388,24 +347,29 @@ ICACHE_RAM_ATTR void FlowIncrement()
 */
 void toggleValve()
 {
-    String state = "closed";
-    if (valveIsActivated)
+    String state;
+    switch (valveIsActivated)
     {
+    case 0:
+        state = "closed";
+        break;
+    case 1:
         state = "opened";
+        break;
     }
 
     terminal.println("Valve " + state + " @ " + getTime());
     terminal.flush();
 
-    digitalWrite(valvePin, valveIsActivated);  // Open valve
+    digitalWrite(valvePin, valveIsActivated);  // Open/Close valve
     Blynk.virtualWrite(V14, valveIsActivated); // Blynk chart of valve state
     if (duration != -1)
     {
-        Blynk.virtualWrite(V11, valveIsActivated);
+        Blynk.virtualWrite(V10, valveIsActivated);
     }
     else
     {
-        Blynk.virtualWrite(V11, 0);
+        Blynk.virtualWrite(V10, 0);
     }
 }
 
@@ -427,12 +391,10 @@ String getTime()
 BLYNK_CONNECTED()
 {
     rtc.begin();
-    for (byte i = 0; i < 9; i++)
+    for (byte i = 0; i < 13; i++)
     {
         Blynk.virtualWrite(i, 0);
     }
-    Blynk.virtualWrite(V12, 0);
-    Blynk.virtualWrite(V13, 0);
 }
 
 /**
@@ -443,8 +405,8 @@ BLYNK_WRITE(V7) // Numeric Input
 {
     inputValue = param.asFloat();
     int totalMinutes = (sliderValue % 60) + (inputValue - (int)inputValue) * 60;
-    Blynk.virtualWrite(V12, ((int)inputValue + (sliderValue / 60) + (totalMinutes / 60)));
-    Blynk.virtualWrite(V13, (totalMinutes % 60));
+    Blynk.virtualWrite(V11, ((int)inputValue + (sliderValue / 60) + (totalMinutes / 60)));
+    Blynk.virtualWrite(V12, (totalMinutes % 60));
 }
 
 /**
@@ -455,15 +417,15 @@ BLYNK_WRITE(V8) // Slider
 {
     sliderValue = param.asInt();
     int totalMinutes = (sliderValue % 60) + (inputValue - (int)inputValue) * 60;
-    Blynk.virtualWrite(V12, ((int)inputValue + (sliderValue / 60) + (totalMinutes / 60)));
-    Blynk.virtualWrite(V13, (totalMinutes % 60));
+    Blynk.virtualWrite(V11, ((int)inputValue + (sliderValue / 60) + (totalMinutes / 60)));
+    Blynk.virtualWrite(V12, (totalMinutes % 60));
 }
 
 /**
     Run when activation button is pressed.
     Activate/Deactivate valve.
 */
-BLYNK_WRITE(V11) // Input Activation button
+BLYNK_WRITE(V10) // Input Activation button
 {
     if (duration != -1) // Timer not running
     {
